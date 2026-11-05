@@ -14,7 +14,7 @@ A fan project, unaffiliated with Square Enix. The wallpaper is original procedur
 
 For Arch-based systems:
 
-    git clone <this repo> ~/nier-replicant-rice
+    git clone https://github.com/EonKodein/nier-replicant-rice.git ~/nier-replicant-rice
     cd ~/nier-replicant-rice
     ./install.sh
 
@@ -66,11 +66,16 @@ Fonts are fetched from [google/fonts](https://github.com/google/fonts) under the
 `theme/` holds the palette and type, `services/` the system state, `widgets/` the frames and
 meters, and `modules/` the bar and OSD.
 
+## License
+
+[GPL-3.0](LICENSE). This covers the code, configs and wallpaper. The fonts are downloaded at
+install time and keep their own SIL OFL license.
+
 ---
 
 ## По-русски
 
-Установка: `git clone`, затем `./install.sh`. Установщик покажет, какие файлы заменит, и спросит
+Установка: `git clone https://github.com/EonKodein/nier-replicant-rice.git`, затем `./install.sh`. Установщик покажет, какие файлы заменит, и спросит
 подтверждение. Откат: `nier-rice off`. Полное удаление: `nier-rice uninstall`. Конфиг niri
 заменяется целиком: блоки `output` перенеси в `~/.config/niri/monitor.kdl`, раскладки укажи в
 `~/.config/niri/nier/input.kdl`.
