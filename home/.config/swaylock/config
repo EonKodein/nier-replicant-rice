@@ -1,0 +1,35 @@
+# NieR Replicant lockscreen (swaylock-effects)
+ignore-empty-password
+disable-caps-lock-text
+image=~/.local/share/nier-rice/wallpaper.png
+scaling=fill
+effect-vignette=0.6:0.9
+
+clock
+indicator
+indicator-radius=118
+indicator-thickness=3
+font=Cinzel
+font-size=30
+timestr=%H:%M
+datestr=%d . %m . %Y
+
+line-color=00000000
+line-clear-color=00000000
+line-ver-color=00000000
+line-wrong-color=00000000
+separator-color=00000000
+inside-color=1a1917e0
+inside-clear-color=1a1917e0
+inside-ver-color=1a1917e0
+inside-wrong-color=1a1917e0
+ring-color=b89f74
+ring-clear-color=a39e91
+ring-ver-color=e6e2d8
+ring-wrong-color=962d2d
+key-hl-color=e6e2d8
+bs-hl-color=962d2d
+text-color=e6e2d8
+text-clear-color=e6e2d8
+text-ver-color=e6e2d8
+text-wrong-color=d4615b

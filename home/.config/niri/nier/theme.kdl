@@ -1,0 +1,57 @@
+// NieR Replicant: stone, bronze, one drop of crimson.
+layout {
+    gaps 6
+
+    focus-ring {
+        off
+    }
+    border {
+        on
+        width 2
+        active-color   "#b89f74"
+        inactive-color "#322f2b"
+        urgent-color   "#962d2d"
+    }
+    tab-indicator {
+        active-color   "#b89f74"
+        inactive-color "#322f2b"
+        urgent-color   "#962d2d"
+    }
+    insert-hint {
+        color "#b89f7466"
+    }
+}
+
+overview {
+    backdrop-color "#12110f"
+}
+
+recent-windows {
+    highlight {
+        active-color "#b89f74"
+        urgent-color "#962d2d"
+    }
+}
+
+// Matte, barely frosted panels.
+blur {
+    passes 1
+    offset 2.0
+    noise 0.02
+    saturation 1.0
+}
+
+// Only the shell's own surfaces are frosted: on windows, blur reads as a glow when
+// focus follows the mouse.
+layer-rule {
+    match namespace="^nier-(bar|osd)$"
+    background-effect {
+        blur true
+    }
+}
+
+// Keeps the stone behind the overview.
+layer-rule {
+    match namespace="^wallpaper$"
+    place-within-backdrop true
+}

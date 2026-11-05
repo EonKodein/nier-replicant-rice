@@ -1,0 +1,25 @@
+# NieR Replicant
+[colors-dark]
+alpha=0.90
+foreground=e6e2d8
+background=1a1917
+selection-foreground=1a1917
+selection-background=b89f74
+cursor=1a1917 b89f74
+urls=b89f74
+regular0=322f2b
+regular1=cf6a64
+regular2=8c9568
+regular3=b89f74
+regular4=7c93a3
+regular5=a5809a
+regular6=7ea197
+regular7=c9c4b6
+bright0=8a8478
+bright1=d97f76
+bright2=a8b184
+bright3=d4bd92
+bright4=9db0bd
+bright5=bd9fb3
+bright6=9dbbb1
+bright7=e6e2d8

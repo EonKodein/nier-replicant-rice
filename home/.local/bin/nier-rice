@@ -1,0 +1,207 @@
+#!/usr/bin/env bash
+# Manage the NieR rice.
+#   nier-rice on          back up, validate, deploy, start
+#   nier-rice off         restore what was there before; rice files stay for next time
+#   nier-rice uninstall   off, then delete every file the rice added
+#   nier-rice status      show what is active
+# --files-only (on/off/uninstall) changes files only: no gsettings, no processes.
+set -Eeuo pipefail
+
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/nier-rice"
+PRE="$STATE/pre-nier"        # path of the backup taken before the rice went live
+ADDED="$STATE/added-files"   # every path the rice created that did not exist before
+QT=".config/qt6ct/qt6ct.conf"
+ROOT="${NIER_RICE_ROOT:-$(cat "$STATE/root" 2>/dev/null || true)}"
+SRC="$ROOT/home"
+FILES_ONLY=0
+
+say() { printf '[nier-rice] %s\n' "$*"; }
+die() { say "ERROR: $*" >&2; exit 1; }
+new_backup() {
+  local d; d="$HOME/.config/dotfiles_backup_$(date +%Y%m%d-%H%M%S)"
+  while [ -e "$d" ]; do d="$d-1"; done
+  mkdir -p "$d"; printf '%s' "$d"
+}
+save() { mkdir -p "$1/$(dirname "$2")"; cp -a "$HOME/$2" "$1/$2"; }   # save <backup dir> <rel path>
+spawn() { niri msg action spawn-sh -- "$1" >/dev/null; }
+stop_rice() {
+  pkill -f '^qs -c nier' 2>/dev/null || true
+  pkill -f '^wl-paste --watch cliphist' 2>/dev/null || true
+  pkill -x swaybg 2>/dev/null || true
+  pkill -x mako 2>/dev/null || true
+  pkill -x swayidle 2>/dev/null || true
+}
+# Other shells that would fight over the bar, wallpaper or notification bus.
+stop_other_shells() {
+  local n
+  if systemctl --user is-active -q angelos.service 2>/dev/null; then
+    systemctl --user stop angelos.service
+    pkill -f 'angelos/scripts/clipboard.py capture' 2>/dev/null || true
+    [ -n "${1:-}" ] && echo angelos >> "$1"
+    say "stopped angelOS"
+  fi
+  for n in waybar swaync dunst; do
+    if pkill -x "$n" 2>/dev/null; then say "stopped $n"; fi
+  done
+}
+
+cmd_on() {
+  [ -d "$SRC" ] || die "rice source not found at '$SRC'. Run install.sh from the repo."
+  local t
+  if [ "$FILES_ONLY" = 0 ]; then
+    for t in niri qs swaybg mako fuzzel kitty swaylock cliphist wl-paste wpctl playerctl brightnessctl; do
+      command -v "$t" >/dev/null || die "missing command: $t (run install.sh to get the dependencies)"
+    done
+  fi
+
+  # Validate the exact config that would go live, in a copy, before anything changes.
+  local tmp; tmp=$(mktemp -d); trap 'rm -rf "$tmp"' RETURN
+  if [ -d "$HOME/.config/niri" ]; then cp -a "$HOME/.config/niri/." "$tmp/"; fi
+  cp -a "$SRC/.config/niri/." "$tmp/"
+  [ -e "$tmp/monitor.kdl" ] || : > "$tmp/monitor.kdl"
+  niri validate -c "$tmp/config.kdl" >/dev/null 2>"$tmp/err" \
+    || { cat "$tmp/err" >&2; die "niri validate failed; nothing changed"; }
+  say "niri config valid"
+
+  local first=0 bk rel n=0
+  [ -f "$PRE" ] || first=1
+  bk=$(new_backup)
+  : > "$bk/manifest"
+  mkdir -p "$STATE"
+  while IFS= read -r rel; do
+    if [ -e "$HOME/$rel" ]; then
+      if ! cmp -s "$SRC/$rel" "$HOME/$rel"; then
+        save "$bk" "$rel"; printf 'M %s\n' "$rel" >> "$bk/manifest"; n=$((n+1))
+      fi
+    else
+      printf 'N %s\n' "$rel" >> "$bk/manifest"
+      printf '%s\n' "$rel" >> "$ADDED"
+    fi
+  done < <(cd "$SRC" && find . -type f -printf '%P\n' | sort)
+  say "backed up $n file(s) to $bk"
+
+  if [ "$first" = 1 ]; then
+    if [ -e "$HOME/$QT" ]; then save "$bk" "$QT"; fi
+    if [ "$FILES_ONLY" = 0 ]; then
+      gsettings get org.gnome.desktop.interface gtk-theme > "$bk/gtk-theme"
+    fi
+    printf '%s' "$bk" > "$PRE"
+  fi
+
+  # Plain copies. config.kdl goes last so niri reloads once, with every include in place.
+  while IFS= read -r rel; do
+    mkdir -p "$HOME/$(dirname "$rel")"
+    cp -f "$SRC/$rel" "$HOME/$rel"
+  done < <(cd "$SRC" && find . -type f ! -path './.config/niri/config.kdl' -printf '%P\n')
+  chmod +x "$HOME/.local/bin/nier-ctl" "$HOME/.local/bin/nier-rice"
+  if [ ! -e "$HOME/.config/niri/monitor.kdl" ]; then
+    printf '// Your output { } blocks go here. nier-rice never overwrites this file.\n' > "$HOME/.config/niri/monitor.kdl"
+    printf '%s\n' ".config/niri/monitor.kdl" >> "$ADDED"
+  fi
+  cp -f "$SRC/.config/niri/config.kdl" "$HOME/.config/niri/config.kdl.nier-new"
+  mv -f "$HOME/.config/niri/config.kdl.nier-new" "$HOME/.config/niri/config.kdl"
+
+  if [ -e "$HOME/$QT" ]; then
+    sed -i -e "s#^color_scheme_path=.*#color_scheme_path=$HOME/.config/qt6ct/colors/nier.conf#" \
+           -e 's#^stylesheets=.*#stylesheets=#' -e 's#^custom_palette=.*#custom_palette=true#' "$HOME/$QT"
+  else
+    mkdir -p "$HOME/$(dirname "$QT")"
+    printf '[Appearance]\ncolor_scheme_path=%s/.config/qt6ct/colors/nier.conf\ncustom_palette=true\nstyle=Fusion\n' "$HOME" > "$HOME/$QT"
+    printf '%s\n' "$QT" >> "$ADDED"
+  fi
+
+  if [ "$FILES_ONLY" = 1 ]; then say "files deployed (--files-only)"; return; fi
+
+  gsettings set org.gnome.desktop.interface gtk-theme NieR
+  if [ -z "${NIRI_SOCKET:-}" ]; then
+    say "installed. Not in a niri session: choose niri at your next login."
+    return
+  fi
+  stop_rice
+  spawn 'exec swaybg -m fill -i ~/.local/share/nier-rice/wallpaper.png'
+  stop_other_shells "$STATE/stopped-shells"
+  spawn 'exec mako'
+  spawn 'exec wl-paste --watch cliphist store'
+  spawn 'exec qs -c nier -n'
+  spawn 'systemctl --user start hyprpolkitagent.service'
+  if command -v swayidle >/dev/null; then
+    spawn "exec swayidle -w before-sleep 'swaylock -f' lock 'swaylock -f'"
+  else
+    say "WARNING: swayidle is not installed, so the session will NOT lock before sleep."
+  fi
+  pkill -USR1 -x kitty 2>/dev/null || true   # kitty re-reads its config on SIGUSR1
+  say "rice is on. Log out and back in if an old bar is still running."
+  say "Roll back with: nier-rice off"
+}
+
+cmd_off() {
+  [ -f "$PRE" ] || die "rice is not active: nothing to restore"
+  local src bk flag rel; src=$(cat "$PRE")
+  [ -f "$src/manifest" ] || die "backup $src is missing its manifest"
+
+  # Anything edited since going live is kept too, in case it mattered.
+  bk=$(new_backup)
+  while read -r flag rel; do
+    [ "$flag" = M ] || continue
+    if [ -e "$HOME/$rel" ]; then save "$bk" "$rel"; fi
+    mkdir -p "$HOME/$(dirname "$rel")"
+    cp -a "$src/$rel" "$HOME/$rel.nier-new"; mv -f "$HOME/$rel.nier-new" "$HOME/$rel"
+  done < "$src/manifest"
+  if [ -e "$src/$QT" ]; then
+    if [ -e "$HOME/$QT" ]; then save "$bk" "$QT"; fi
+    cp -a "$src/$QT" "$HOME/$QT"
+  fi
+  # Active as long as it exists, unlike the other added files.
+  if grep -qx 'N .config/gtk-4.0/gtk.css' "$src/manifest"; then rm -f "$HOME/.config/gtk-4.0/gtk.css"; fi
+  rm -f "$PRE"
+  say "restored files from $src (files as they were just now: $bk)"
+  if [ "$FILES_ONLY" = 1 ]; then return; fi
+
+  if [ -f "$src/gtk-theme" ]; then
+    gsettings set org.gnome.desktop.interface gtk-theme "$(tr -d "'" < "$src/gtk-theme")"
+  fi
+  stop_rice
+  if [ -n "${NIRI_SOCKET:-}" ] && grep -qx angelos "$STATE/stopped-shells" 2>/dev/null; then
+    spawn 'exec angelos start'
+    say "angelOS starting"
+  fi
+  rm -f "$STATE/stopped-shells"
+  pkill -USR1 -x kitty 2>/dev/null || true
+  say "rice is off. Log out and back in to get your previous session daemons back."
+}
+
+cmd_uninstall() {
+  if [ -f "$PRE" ]; then cmd_off; fi
+  local rel d
+  if [ -f "$ADDED" ]; then
+    while IFS= read -r rel; do
+      [ -n "$rel" ] || continue
+      rm -f -- "$HOME/$rel"
+      d=$(dirname "$rel")
+      # Remove directories this left empty, stopping at the first one still in use.
+      while [ "$d" != "." ] && rmdir -- "$HOME/$d" 2>/dev/null; do d=$(dirname "$d"); done
+    done < <(sort -u "$ADDED")
+  fi
+  rm -rf "$HOME/.local/share/fonts/nier-rice" "$STATE"
+  for d in .local/share/fonts .local/share .local/state .local; do rmdir -- "$HOME/$d" 2>/dev/null || true; done
+  if [ "$FILES_ONLY" = 0 ]; then fc-cache -f >/dev/null 2>&1 || true; fi
+  say "uninstalled. Your dotfiles_backup_* folders in ~/.config were kept; delete them when you're sure."
+}
+
+cmd_status() {
+  if [ -f "$PRE" ]; then say "rice: ON (pre-rice backup: $(cat "$PRE"))"; else say "rice: OFF"; fi
+  local p
+  for p in 'qs -c nier' 'swaybg' 'mako' 'swayidle' 'wl-paste --watch cliphist'; do
+    if pgrep -f "$p" >/dev/null; then say "  running  $p"; else say "  stopped  $p"; fi
+  done
+}
+
+cmd="${1:-status}"
+[ "${2:-}" = "--files-only" ] && FILES_ONLY=1
+case "$cmd" in
+  on) cmd_on ;;
+  off) cmd_off ;;
+  uninstall) cmd_uninstall ;;
+  status) cmd_status ;;
+  *) sed -n 2,6p "$0"; exit 2 ;;
+esac

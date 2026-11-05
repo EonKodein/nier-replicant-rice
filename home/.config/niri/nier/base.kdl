@@ -1,0 +1,61 @@
+// Behaviour: everything that is not colour.
+prefer-no-csd
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+environment {
+    ELECTRON_OZONE_PLATFORM_HINT "auto"
+    QT_QPA_PLATFORM "wayland"
+    QT_QPA_PLATFORMTHEME "qt6ct"
+    QT_WAYLAND_DISABLE_WINDOWDECORATION "1"
+}
+
+hotkey-overlay {
+    skip-at-startup
+}
+
+layout {
+    center-focused-column "never"
+    background-color "transparent"
+    shadow {
+        off
+    }
+    preset-column-widths {
+        proportion 0.33333
+        proportion 0.5
+        proportion 0.66667
+    }
+    default-column-width { proportion 0.5; }
+}
+
+animations {
+    workspace-switch {
+        duration-ms 380
+        curve "cubic-bezier" 0.22 1 0.36 1
+    }
+    window-open {
+        duration-ms 280
+        curve "ease-out-cubic"
+    }
+    window-close {
+        duration-ms 220
+        curve "ease-out-quad"
+    }
+    horizontal-view-movement {
+        spring damping-ratio=0.85 stiffness=600 epsilon=0.0001
+    }
+    window-movement {
+        spring damping-ratio=0.88 stiffness=620 epsilon=0.0001
+    }
+    window-resize {
+        spring damping-ratio=0.9 stiffness=700 epsilon=0.0001
+    }
+}
+
+// Angular corners everywhere, popups included.
+window-rule {
+    geometry-corner-radius 0
+    clip-to-geometry true
+    popups {
+        geometry-corner-radius 0
+    }
+}

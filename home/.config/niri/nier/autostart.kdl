@@ -1,0 +1,8 @@
+// Session daemons.
+spawn-sh-at-startup "exec swaybg -m fill -i ~/.local/share/nier-rice/wallpaper.png"
+spawn-at-startup "mako"
+spawn-at-startup "qs" "-c" "nier" "-n"
+spawn-sh-at-startup "exec wl-paste --watch cliphist store"
+// Locks before sleep. Add `timeout 600 'swaylock -f'` here if you also want an idle lock.
+spawn-sh-at-startup "command -v swayidle >/dev/null && exec swayidle -w before-sleep 'swaylock -f' lock 'swaylock -f'"
+spawn-sh-at-startup "systemctl --user start hyprpolkitagent.service"

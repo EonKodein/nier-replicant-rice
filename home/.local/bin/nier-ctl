@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Actions behind the NieR rice keybinds. Usage: nier-ctl session|clipboard|brightness up|down
+set -u
+
+menu() { fuzzel --dmenu --width 26 --lines "$2" --prompt "[ $1 ]  "; }
+
+case "${1:-}" in
+  session)
+    choice=$(printf '%s\n' Lock Suspend Logout Reboot Shutdown | menu session 5) || exit 0
+    case "$choice" in
+      Lock)     exec swaylock -f ;;
+      Suspend)  exec systemctl suspend ;;
+      Logout)   exec niri msg action quit --skip-confirmation ;;
+      Reboot)   exec systemctl reboot ;;
+      Shutdown) exec systemctl poweroff ;;
+    esac ;;
+  clipboard)
+    choice=$(cliphist list | fuzzel --dmenu --width 70 --lines 12 --prompt '[ recall ]  ') || exit 0
+    printf '%s' "$choice" | cliphist decode | wl-copy ;;
+  brightness)
+    case "${2:-}" in
+      up)   brightnessctl -q set 5%+ ;;
+      down) brightnessctl -q --min-value=240 set 5%- ;;
+      *)    echo "usage: nier-ctl brightness up|down" >&2; exit 2 ;;
+    esac
+    # Field 4 of brightnessctl -m is the current percentage, e.g. "70%".
+    pct=$(brightnessctl -m | cut -d, -f4 | tr -d '%')
+    qs -c nier ipc call osd brightness "$pct" >/dev/null 2>&1 || true ;;
+  *) echo "usage: nier-ctl session|clipboard|brightness up|down" >&2; exit 2 ;;
+esac

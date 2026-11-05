@@ -1,0 +1,32 @@
+# NieR Replicant: pale parchment banners with a thin bronze rule.
+max-visible=6
+layer=top
+anchor=top-right
+default-timeout=10000
+font=EB Garamond 12
+background-color=#e6e2d8f2
+text-color=#1a1917
+border-color=#b89f74
+progress-color=over #b89f74
+border-size=2
+border-radius=0
+padding=12,16
+margin=8,6,0,6
+width=380
+height=180
+icons=1
+max-icon-size=40
+icon-location=left
+markup=1
+format=<span font_desc="Cinzel 9" foreground="#6f5a30">%a</span>\n<b>%s</b>\n%b
+
+[urgency=low]
+border-color=#a39e91
+
+[urgency=critical]
+border-color=#962d2d
+border-size=3
+default-timeout=0
+
+[app-name=""]
+format=<b>%s</b>\n%b
