@@ -10,18 +10,6 @@ Row {
 
     spacing: 2
 
-    function roman(n) {
-        const map = [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
-        let out = "";
-        for (const [v, s] of map) {
-            while (n >= v) {
-                out += s;
-                n -= v;
-            }
-        }
-        return out;
-    }
-
     Repeater {
         model: Niri.workspacesOn(root.output)
 
@@ -38,7 +26,7 @@ Row {
             Text {
                 id: label
                 anchors.centerIn: parent
-                text: cell.active ? "[ " + root.roman(cell.modelData.idx) + " ]" : root.roman(cell.modelData.idx)
+                text: cell.active ? "[ " + Niri.roman(cell.modelData.idx) + " ]" : Niri.roman(cell.modelData.idx)
                 font.family: Theme.display
                 font.pixelSize: 14
                 font.weight: cell.active ? Font.DemiBold : Font.Normal

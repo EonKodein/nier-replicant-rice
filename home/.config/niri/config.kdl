@@ -1,5 +1,6 @@
 // NieR Replicant rice for niri. Installed by nier-rice; see the repo README.
-// Put your own output { } blocks in monitor.kdl: the installer never overwrites that file.
+// Your own settings belong in monitor.kdl (output blocks) and local.kdl (everything else, read
+// last so it wins). The installer never overwrites those two files.
 include "monitor.kdl"
 
 include "./nier/input.kdl"
@@ -7,3 +8,5 @@ include "./nier/base.kdl"
 include "./nier/autostart.kdl"
 include "./nier/binds.kdl"
 include "./nier/theme.kdl"
+
+include "local.kdl"

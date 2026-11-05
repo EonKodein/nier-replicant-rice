@@ -1,0 +1,55 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/master/doc/json_schema.json",
+
+  // A status screen for the NieR rice. Sigil from scripts/gen-fetch-logo.py.
+  "logo": {
+    "type": "file-raw",
+    "source": "~/.config/fastfetch/nier-logo.txt",
+    "width": 34,
+    "height": 17,
+    "padding": { "top": 1, "left": 2, "right": 4 }
+  },
+
+  "display": {
+    "disableLinewrap": true,
+    "separator": "  ",
+    "color": {
+      "keys": "38;2;184;159;116",
+      "title": "38;2;230;226;216",
+      "output": "38;2;201;196;182"
+    },
+    "key": { "width": 13 },
+    "bar": {
+      "width": 14,
+      "char": { "elapsed": "◆", "total": "◇" },
+      "border": { "left": "[ ", "right": " ]" },
+      "color": {
+        "elapsed": "38;2;184;159;116",
+        "total": "38;2;111;96;71",
+        "border": "38;2;111;96;71"
+      }
+    },
+    "percent": {
+      "type": ["bar", "num"],
+      "color": { "green": "38;2;184;159;116", "yellow": "38;2;212;189;146", "red": "38;2;212;97;91" }
+    }
+  },
+
+  "modules": [
+    { "type": "custom", "format": "{#38;2;111;96;71}◆ ─────{#} {#38;2;230;226;216}S T A T U S{#} {#38;2;111;96;71}───── ◆{#}" },
+    { "type": "title", "key": "ᛗ Bearer", "format": "{user-name}{#38;2;111;96;71} of {#}{host-name}" },
+    "break",
+    { "type": "os", "key": "ᛟ Realm", "format": "{pretty-name}" },
+    { "type": "kernel", "key": "ᚲ Core", "format": "{release}" },
+    { "type": "wm", "key": "ᚱ Grimoire", "format": "{pretty-name} {version}" },
+    { "type": "uptime", "key": "ᛏ Journey" },
+    "break",
+    { "type": "command", "key": "ᛊ Mind", "text": "sed -n '/^model name/{s/.*: //;s/([RTMrtm]*)//g;s/[0-9]*th Gen //;s/Core //;s/ CPU.*//;s/ @.*//;p;q}' /proc/cpuinfo" },
+    { "type": "gpu", "key": "ᚷ Sight", "format": "{name}" },
+    { "type": "memory", "key": "ᛒ Memory", "format": "{percentage-bar} {used}" },
+    { "type": "disk", "key": "ᛃ Tome", "folders": "/", "format": "{size-percentage-bar} {size-used}" },
+    { "type": "battery", "key": "ᛋ Vigor", "format": "{capacity-bar} {capacity}" },
+    "break",
+    { "type": "custom", "format": "{#38;2;74;69;61}◆ {#38;2;111;96;71}◆ {#38;2;184;159;116}◆ {#38;2;230;226;216}◆ {#38;2;150;45;45}◆{#}  {#38;2;111;96;71}ver. 1.22474487139{#}" }
+  ]
+}

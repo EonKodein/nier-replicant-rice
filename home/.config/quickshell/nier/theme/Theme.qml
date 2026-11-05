@@ -26,6 +26,7 @@ Singleton {
     // Type. Cinzel has no Cyrillic: use `serif` for anything an application supplies.
     readonly property string display: "Cinzel"
     readonly property string serif: "Cormorant Garamond"
+    readonly property string book: "EB Garamond"     // sturdier than Cormorant, for reading lists
     readonly property string mono: "JetBrains Mono"
     readonly property string rune: "Noto Sans Runic"
 

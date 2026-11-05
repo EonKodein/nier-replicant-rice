@@ -56,6 +56,13 @@ Scope {
             root.showVolume();
         }
     }
+    Connections {
+        target: Niri
+        function onLayoutIndexChanged() {
+            if (Niri.layoutNames.length > 1)
+                root.show("Layout", "ᚱ", 1, Niri.layoutShort, Theme.bronze);
+        }
+    }
     IpcHandler {
         target: "osd"
         function brightness(percent: int): void {

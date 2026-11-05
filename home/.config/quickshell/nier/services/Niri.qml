@@ -18,16 +18,35 @@ Singleton {
         const w = workspaces.find(x => x.is_focused);
         return w ? (w.output ?? "") : "";
     }
+    readonly property int focusedIdx: {
+        const w = workspaces.find(x => x.is_focused);
+        return w ? w.idx : 0;
+    }
     readonly property string layoutShort: {
         const n = layoutNames[layoutIndex] ?? "";
         return n.slice(0, 2).toUpperCase();
     }
 
+    function roman(n) {
+        const map = [[100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+        let out = "";
+        for (const [v, s] of map) {
+            while (n >= v) {
+                out += s;
+                n -= v;
+            }
+        }
+        return out;
+    }
     function workspacesOn(output) {
         return workspaces.filter(w => w.output === output).sort((a, b) => a.idx - b.idx);
     }
     function windowCount(workspaceId) {
         return windows.filter(w => w.workspace_id === workspaceId).length;
+    }
+    function isEmptyOn(output) {
+        const ws = workspaces.find(w => w.output === output && w.is_active);
+        return !!ws && windowCount(ws.id) === 0;
     }
     function activeTitleOn(output) {
         const ws = workspaces.find(w => w.output === output && w.is_active);

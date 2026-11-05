@@ -13,9 +13,9 @@ FONTS="$HOME/.local/share/fonts/nier-rice"
 FONT_BASE=https://raw.githubusercontent.com/google/fonts/main/ofl
 
 PACKAGES=(niri quickshell xwayland-satellite xdg-desktop-portal-gnome xdg-desktop-portal-gtk
-  swaybg mako fuzzel kitty foot swayidle cliphist wl-clipboard brightnessctl playerctl
+  swaybg mako kitty foot swayidle cliphist wl-clipboard brightnessctl playerctl
   pipewire pipewire-pulse wireplumber networkmanager upower qt6ct noto-fonts adw-gtk-theme
-  hyprpolkitagent libnotify curl)
+  hyprpolkitagent libnotify curl fastfetch python-evdev btop)
 FONT_FILES=('cinzel/Cinzel[wght].ttf'
   'cormorantgaramond/CormorantGaramond[wght].ttf' 'cormorantgaramond/CormorantGaramond-Italic[wght].ttf'
   'ebgaramond/EBGaramond[wght].ttf' 'ebgaramond/EBGaramond-Italic[wght].ttf'
@@ -82,6 +82,10 @@ if [ "$YES" = 0 ] && [ "$FILES_ONLY" = 0 ]; then
 fi
 
 if [ "$DEPS" = 1 ]; then install_packages; fi
+if [ "$FILES_ONLY" = 0 ] && ! id -nG | tr ' ' '\n' | grep -qx input; then
+  say "Note: tapping Super to open the launcher needs the input group. Mod+Space works without it."
+  say "      To enable it: sudo usermod -aG input \$USER, then log in again."
+fi
 if [ "$FILES_ONLY" = 0 ]; then install_fonts; fi
 
 mkdir -p "$STATE"

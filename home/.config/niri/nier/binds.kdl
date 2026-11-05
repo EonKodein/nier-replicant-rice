@@ -6,10 +6,10 @@ binds {
     Mod+T                               hotkey-overlay-title="Terminal: kitty" { spawn "kitty"; }
     Mod+B                               hotkey-overlay-title="Browser" { spawn-sh "xdg-open about:blank"; }
     Mod+E                               hotkey-overlay-title="Files" { spawn-sh "xdg-open ~"; }
-    Mod+Space                           hotkey-overlay-title="Launcher" { spawn "fuzzel"; }
-    Mod+V                               hotkey-overlay-title="Clipboard history" { spawn-sh "exec ~/.local/bin/nier-ctl clipboard"; }
+    Mod+Space                           hotkey-overlay-title="Launcher" { spawn "qs" "-c" "nier" "ipc" "call" "menu" "toggle" "launcher"; }
+    Mod+V                               hotkey-overlay-title="Clipboard history" { spawn "qs" "-c" "nier" "ipc" "call" "menu" "toggle" "clipboard"; }
     Mod+Alt+L                           hotkey-overlay-title="Lock" { spawn "swaylock" "-f"; }
-    Mod+Shift+Q                         hotkey-overlay-title="Session menu" { spawn-sh "exec ~/.local/bin/nier-ctl session"; }
+    Mod+Shift+Q                         hotkey-overlay-title="Session menu" { spawn "qs" "-c" "nier" "ipc" "call" "menu" "toggle" "session"; }
     Mod+N                               hotkey-overlay-title="Dismiss notification" { spawn "makoctl" "dismiss"; }
     Mod+Shift+N                         hotkey-overlay-title="Restore notification" { spawn "makoctl" "restore"; }
     Mod+Shift+S                         hotkey-overlay-title="Screenshot: region" { screenshot; }

@@ -10,7 +10,10 @@ set -Eeuo pipefail
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/nier-rice"
 PRE="$STATE/pre-nier"        # path of the backup taken before the rice went live
 ADDED="$STATE/added-files"   # every path the rice created that did not exist before
+STUBS="$STATE/stub-files"    # one-line files for your own settings, never overwritten
 QT=".config/qt6ct/qt6ct.conf"
+# Anchored to the start of the command line, so only the real process can ever match.
+TAP_PROCESS='^[^ ]*python[^ ]* [^ ]*/\.local/bin/nier-tap'
 ROOT="${NIER_RICE_ROOT:-$(cat "$STATE/root" 2>/dev/null || true)}"
 SRC="$ROOT/home"
 FILES_ONLY=0
@@ -24,9 +27,16 @@ new_backup() {
 }
 save() { mkdir -p "$1/$(dirname "$2")"; cp -a "$HOME/$2" "$1/$2"; }   # save <backup dir> <rel path>
 spawn() { niri msg action spawn-sh -- "$1" >/dev/null; }
+ensure_stub() {  # ensure_stub <rel path> <comment line>
+  if [ ! -e "$HOME/$1" ]; then
+    printf '%s\n' "$2" > "$HOME/$1"
+    printf '%s\n' "$1" >> "$STUBS"
+  fi
+}
 stop_rice() {
   pkill -f '^qs -c nier' 2>/dev/null || true
   pkill -f '^wl-paste --watch cliphist' 2>/dev/null || true
+  pkill -f "$TAP_PROCESS" 2>/dev/null || true
   pkill -x swaybg 2>/dev/null || true
   pkill -x mako 2>/dev/null || true
   pkill -x swayidle 2>/dev/null || true
@@ -49,7 +59,7 @@ cmd_on() {
   [ -d "$SRC" ] || die "rice source not found at '$SRC'. Run install.sh from the repo."
   local t
   if [ "$FILES_ONLY" = 0 ]; then
-    for t in niri qs swaybg mako fuzzel kitty swaylock cliphist wl-paste wpctl playerctl brightnessctl; do
+    for t in niri qs swaybg mako kitty swaylock cliphist wl-paste wpctl playerctl brightnessctl; do
       command -v "$t" >/dev/null || die "missing command: $t (run install.sh to get the dependencies)"
     done
   fi
@@ -59,6 +69,7 @@ cmd_on() {
   if [ -d "$HOME/.config/niri" ]; then cp -a "$HOME/.config/niri/." "$tmp/"; fi
   cp -a "$SRC/.config/niri/." "$tmp/"
   [ -e "$tmp/monitor.kdl" ] || : > "$tmp/monitor.kdl"
+  [ -e "$tmp/local.kdl" ] || : > "$tmp/local.kdl"
   niri validate -c "$tmp/config.kdl" >/dev/null 2>"$tmp/err" \
     || { cat "$tmp/err" >&2; die "niri validate failed; nothing changed"; }
   say "niri config valid"
@@ -88,16 +99,16 @@ cmd_on() {
     printf '%s' "$bk" > "$PRE"
   fi
 
-  # Plain copies. config.kdl goes last so niri reloads once, with every include in place.
+  # Plain copies, each moved into place: this script is one of them, and bash is still reading it.
+  # config.kdl goes last so niri reloads once, with every include in place.
   while IFS= read -r rel; do
     mkdir -p "$HOME/$(dirname "$rel")"
-    cp -f "$SRC/$rel" "$HOME/$rel"
+    cp -f "$SRC/$rel" "$HOME/$rel.nier-new"
+    mv -f "$HOME/$rel.nier-new" "$HOME/$rel"
   done < <(cd "$SRC" && find . -type f ! -path './.config/niri/config.kdl' -printf '%P\n')
-  chmod +x "$HOME/.local/bin/nier-ctl" "$HOME/.local/bin/nier-rice"
-  if [ ! -e "$HOME/.config/niri/monitor.kdl" ]; then
-    printf '// Your output { } blocks go here. nier-rice never overwrites this file.\n' > "$HOME/.config/niri/monitor.kdl"
-    printf '%s\n' ".config/niri/monitor.kdl" >> "$ADDED"
-  fi
+  chmod +x "$HOME/.local/bin/nier-ctl" "$HOME/.local/bin/nier-rice" "$HOME/.local/bin/nier-tap"
+  ensure_stub .config/niri/monitor.kdl '// Your output { } blocks go here. nier-rice never overwrites this file.'
+  ensure_stub .config/niri/local.kdl '// Your own niri settings go here. Read last, so they win. nier-rice never overwrites this file.'
   cp -f "$SRC/.config/niri/config.kdl" "$HOME/.config/niri/config.kdl.nier-new"
   mv -f "$HOME/.config/niri/config.kdl.nier-new" "$HOME/.config/niri/config.kdl"
 
@@ -123,6 +134,7 @@ cmd_on() {
   spawn 'exec mako'
   spawn 'exec wl-paste --watch cliphist store'
   spawn 'exec qs -c nier -n'
+  spawn 'exec ~/.local/bin/nier-tap'
   spawn 'systemctl --user start hyprpolkitagent.service'
   if command -v swayidle >/dev/null; then
     spawn "exec swayidle -w before-sleep 'swaylock -f' lock 'swaylock -f'"
@@ -173,6 +185,15 @@ cmd_off() {
 cmd_uninstall() {
   if [ -f "$PRE" ]; then cmd_off; fi
   local rel d
+  if [ -f "$STUBS" ]; then
+    while IFS= read -r rel; do
+      if [ -f "$HOME/$rel" ] && [ "$(wc -l < "$HOME/$rel")" -gt 1 ]; then
+        say "kept ~/$rel: it has your settings in it"
+      else
+        rm -f -- "$HOME/$rel"
+      fi
+    done < <(sort -u "$STUBS")
+  fi
   if [ -f "$ADDED" ]; then
     while IFS= read -r rel; do
       [ -n "$rel" ] || continue
@@ -190,9 +211,10 @@ cmd_uninstall() {
 
 cmd_status() {
   if [ -f "$PRE" ]; then say "rice: ON (pre-rice backup: $(cat "$PRE"))"; else say "rice: OFF"; fi
-  local p
-  for p in 'qs -c nier' 'swaybg' 'mako' 'swayidle' 'wl-paste --watch cliphist'; do
-    if pgrep -f "$p" >/dev/null; then say "  running  $p"; else say "  stopped  $p"; fi
+  local entry
+  for entry in 'bar|^qs -c nier' 'wallpaper|^swaybg' 'notifications|^mako' 'lock before sleep|^swayidle' \
+               'clipboard|^wl-paste --watch cliphist' "Mod tap|$TAP_PROCESS"; do
+    if pgrep -f "${entry#*|}" >/dev/null; then say "  running  ${entry%%|*}"; else say "  stopped  ${entry%%|*}"; fi
   done
 }
 

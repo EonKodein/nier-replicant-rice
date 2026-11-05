@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Open the launcher on a lone tap of the Super key. niri can't bind a bare modifier, so this
+watches input devices directly, which needs membership of the `input` group.
+
+A tap means Super pressed and released within --max-ms with nothing else in between, so holding
+it or using it in a shortcut does nothing. Skipped on the lock screen and over fullscreen windows.
+
+Devices are read-only and never grabbed. Key codes are compared and then forgotten: nothing is
+stored, logged or printed.
+"""
+import argparse
+import json
+import selectors
+import subprocess
+import sys
+import time
+
+try:
+    import evdev
+    from evdev import ecodes
+except ImportError:
+    sys.exit("nier-tap: python-evdev is not installed")
+
+SUPER = {ecodes.KEY_LEFTMETA, ecodes.KEY_RIGHTMETA}
+RESCAN_SECONDS = 5
+
+
+class TapDetector:
+    def __init__(self, limit):
+        self.limit = limit
+        self.pressed_at = None
+        self.spoiled = False
+
+    def press(self, now, others_held=False):
+        if self.pressed_at is None:
+            self.pressed_at = now
+            self.spoiled = others_held
+        else:
+            self.spoiled = True      # both Super keys at once
+
+    def interrupt(self):
+        if self.pressed_at is not None:
+            self.spoiled = True
+
+    def release(self, now):
+        if self.pressed_at is None:
+            return False
+        tapped = not self.spoiled and now - self.pressed_at <= self.limit
+        self.pressed_at = None
+        return tapped
+
+
+def running(name):
+    return subprocess.run(["pgrep", "-x", name], stdout=subprocess.DEVNULL).returncode == 0
+
+
+def menu(*call):
+    try:
+        subprocess.run(["qs", "-c", "nier", "ipc", "call", "menu", *call],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def niri_json(what):
+    done = subprocess.run(["niri", "msg", "-j", what], capture_output=True, text=True, timeout=2)
+    return json.loads(done.stdout)
+
+
+def covers_output():
+    try:
+        window, output = niri_json("focused-window"), niri_json("focused-output")
+        size, logical = window["layout"]["window_size"], output["logical"]
+        return size[0] >= logical["width"] and size[1] >= logical["height"]
+    except (TypeError, KeyError, ValueError, OSError, subprocess.SubprocessError):
+        return False
+
+
+def on_tap():
+    if running("swaylock"):
+        return
+    # A tap may still close the menu over a fullscreen window, but never opens one there.
+    if covers_output():
+        menu("close")
+    else:
+        menu("toggle", "launcher")
+
+
+def watches(device):
+    keys = device.capabilities().get(ecodes.EV_KEY, [])
+    return bool(SUPER & set(keys)) or ecodes.BTN_LEFT in keys   # pointers: a click cancels a tap
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--max-ms", type=int, default=400, help="longest press that counts as a tap")
+    args = parser.parse_args()
+
+    detector = TapDetector(args.max_ms / 1000)
+    selector = selectors.DefaultSelector()
+    devices, ignored = {}, set()
+
+    def forget(path):
+        device = devices.pop(path, None)
+        if device:
+            selector.unregister(device)
+            device.close()
+
+    def rescan():
+        present = set(evdev.list_devices())
+        denied = False
+        for path in present - devices.keys() - ignored:
+            try:
+                device = evdev.InputDevice(path)
+            except PermissionError:
+                denied = True
+                continue
+            except OSError:
+                continue
+            if watches(device):
+                devices[path] = device
+                selector.register(device, selectors.EVENT_READ)
+            else:
+                device.close()
+                ignored.add(path)
+        for path in devices.keys() - present:
+            forget(path)
+        ignored.intersection_update(present)
+        if denied and not devices:
+            sys.exit("nier-tap: can't read input devices. Fix: sudo usermod -aG input $USER, then log in again")
+
+    last_scan = 0.0
+    while True:
+        if time.monotonic() - last_scan > RESCAN_SECONDS:
+            rescan()
+            last_scan = time.monotonic()
+        for key, _ in selector.select(timeout=RESCAN_SECONDS):
+            device = key.fileobj
+            try:
+                events = list(device.read())
+            except OSError:
+                forget(device.path)
+                continue
+            for event in events:
+                if event.type == ecodes.EV_KEY and event.code in SUPER:
+                    if event.value == 1:
+                        detector.press(time.monotonic(), bool(set(device.active_keys()) - SUPER))
+                    elif event.value == 0 and detector.release(time.monotonic()):
+                        on_tap()
+                elif event.type == ecodes.EV_KEY and event.value == 1:
+                    detector.interrupt()
+                elif event.type == ecodes.EV_ABS or (event.type == ecodes.EV_REL and event.code in (ecodes.REL_WHEEL, ecodes.REL_HWHEEL)):
+                    detector.interrupt()   # touchpad gesture or wheel: a Mod+scroll, not a tap
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass

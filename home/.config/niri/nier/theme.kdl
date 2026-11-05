@@ -44,7 +44,7 @@ blur {
 // Only the shell's own surfaces are frosted: on windows, blur reads as a glow when
 // focus follows the mouse.
 layer-rule {
-    match namespace="^nier-(bar|osd)$"
+    match namespace="^nier-(bar|osd|chapter)$"
     background-effect {
         blur true
     }

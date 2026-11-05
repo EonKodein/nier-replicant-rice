@@ -94,10 +94,10 @@ for i in range(7):                                     # seven nodes
     s = U * 0.017
     dl.polygon([(x0, y0 - s * 1.5), (x0 + s, y0), (x0, y0 + s * 1.5), (x0 - s, y0)], fill=255)
 
-# the sealed verse: one crimson arc and a central mark
+# the sealed verse: a track for the living arc (modules/seal/LivingSeal.qml) and a central mark
 A = U * 0.905
-dr.arc((cx - U * 0.66, cy - U * 0.66, cx + U * 0.66, cy + U * 0.66), 200, 305, fill=255, width=10)
-dr.arc((cx - U * 0.645, cy - U * 0.645, cx + U * 0.645, cy + U * 0.645), 200, 305, fill=120, width=3)
+ring(dl, U * 0.66, 3, 120)                             # the shell draws the day's arc on this track
+ring(dl, U * 0.645, 2, 80)
 s = U * 0.055
 dr.polygon([(cx, cy - s * 1.7), (cx + s, cy), (cx, cy + s * 1.7), (cx - s, cy)], outline=255, width=8)
 s2 = s * 0.42

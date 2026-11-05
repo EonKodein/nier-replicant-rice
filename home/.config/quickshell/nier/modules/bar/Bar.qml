@@ -71,6 +71,15 @@ PanelWindow {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
 
+            MediaMeter {
+                id: media
+                anchors.verticalCenter: parent.verticalCenter
+                visible: Media.active
+            }
+            Divider {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: Media.active
+            }
             Tray {
                 id: tray
                 anchors.verticalCenter: parent.verticalCenter
@@ -81,6 +90,12 @@ PanelWindow {
                 visible: tray.hasItems
             }
             LayoutIndicator {
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Divider {
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            LoadMeters {
                 anchors.verticalCenter: parent.verticalCenter
             }
             Divider {
